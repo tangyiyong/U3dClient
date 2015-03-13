@@ -69,6 +69,15 @@ public class ClientConnector
         return true; 
     }
 
+    public Boolean SetLoginServerAddr(string strIpAddr, UInt16 sPort)
+    {
+        m_strLoginIp = strIpAddr;
+
+        m_sLoginPort = sPort;
+
+        return true;
+    }
+
     //public Boolean ConnectToServer(string strIpAddr, UInt16 sPort)
     //{
     //    IPAddress ipAddress = IPAddress.Parse(strIpAddr);
@@ -115,6 +124,8 @@ public class ClientConnector
 
             return false;
         }
+
+         m_ClientSocket.Blocking = false;
 
         SetConnectState(ConnectState.Raw_Connect);
 
@@ -175,6 +186,14 @@ public class ClientConnector
             {
                 return false;
             }
+
+            StConnectNotify ConnectNotify = new StConnectNotify();
+            ConnectNotify.btConType =  (Byte)ConnectionType.TYPE_CLT_PLAYER;
+	        ConnectNotify.u64ConnID = m_u64ClientID;
+	        m_WriteHelper.BeginWrite((UInt16)Command_ID.CMD_CONNECT_NOTIFY, (Byte)CmdHandler_ID.CMDH_SVR_CON);
+            ConnectNotify.Write(m_WriteHelper);
+            m_WriteHelper.EndWrite();
+            SendData(m_WriteHelper.GetData(), (int)m_WriteHelper.GetDataLen());
         }
 
         m_WriteHelper.BeginWrite((UInt16)Command_ID.CMD_CHAR_LOGIN_REQ, 0);
@@ -296,31 +315,21 @@ public class ClientConnector
 
 	    Byte ConType = ConnectNotify.btConType;
 
-	    ConnectNotify.btConType =  (Byte)ConnectionType.TYPE_CLT_PLAYER;
-
-	    ConnectNotify.u64ConnID = m_u64ClientID;
-
-	    m_WriteHelper.BeginWrite((UInt16)Command_ID.CMD_CONNECT_NOTIFY, (Byte)CmdHandler_ID.CMDH_SVR_CON);
-
-        ConnectNotify.Write(m_WriteHelper);
-
-        m_WriteHelper.EndWrite();
-
-        SendData(m_WriteHelper.GetData(), (int)m_WriteHelper.GetDataLen());
-
         if (ConType == (Byte)ConnectionType.TYPE_SVR_PROXY)
 	    {
-            StCharEnterGameReq CharEnterGameReq = new StCharEnterGameReq();
+            ConnectNotify.btConType =  (Byte)ConnectionType.TYPE_CLT_PLAYER;
+	        ConnectNotify.u64ConnID = m_u64ClientID;
+	        m_WriteHelper.BeginWrite((UInt16)Command_ID.CMD_CONNECT_NOTIFY, (Byte)CmdHandler_ID.CMDH_SVR_CON);
+            ConnectNotify.Write(m_WriteHelper);
+            m_WriteHelper.EndWrite();
+            SendData(m_WriteHelper.GetData(), (int)m_WriteHelper.GetDataLen());
 
+            StCharEnterGameReq CharEnterGameReq = new StCharEnterGameReq();
 		    CharEnterGameReq.u64CharID = m_u64ClientID;
             CharEnterGameReq.dwIdentifyCode = m_dwIdentifyCode;
-
             m_WriteHelper.BeginWrite((UInt16)Command_ID.CMD_CHAR_ENTER_GAME_REQ, (Byte)CmdHandler_ID.CMDH_SENCE);
-
             CharEnterGameReq.Write(m_WriteHelper);
-
             m_WriteHelper.EndWrite();
-
             SendData(m_WriteHelper.GetData(), (int)m_WriteHelper.GetDataLen());
 	    }
         else if (ConType == (Byte)ConnectionType.TYPE_SVR_LOGIN)
@@ -342,7 +351,7 @@ public class ClientConnector
             m_u64ClientID = CharPickCharAck.u64CharID;
             m_dwIdentifyCode = CharPickCharAck.dwIdentifyCode;
             m_WriteHelper.m_u64ClientID = CharPickCharAck.u64CharID;
-            ConnectToServer(CharPickCharAck.szIpAddr, CharPickCharAck.sPort);
+            ConnectToServer(CharPickCharAck.szProxyIpAddr, CharPickCharAck.nProxyPort);
         }
 
         return true; 
@@ -395,9 +404,16 @@ public class ClientConnector
     {
         if (m_DataLen < PacketHeaderSize)
         {
+            if (m_RecvLen <= 0)
+            {
+                return false;
+            }
+
             Array.Copy(m_RecvBuffer, 0, m_DataBuffer, m_DataLen, m_RecvLen);
 
             m_DataLen += m_RecvLen;
+
+            m_RecvLen = 0;
         }
 
         if (m_DataLen < PacketHeaderSize)
