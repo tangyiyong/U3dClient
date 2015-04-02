@@ -19,9 +19,14 @@ public class LoginUI_Logic : MessageHandler
     private int m_nCharCount = 0;
     private StCharPickInfo[] m_SelCharList = new StCharPickInfo[4];
 
+    Texture2D BgImage;
+
     public void Start()
     {
         ClientEngine.s_ClientConnector.RegisterMsgHandler(this);
+
+        BgImage = (Texture2D)Resources.Load("Login_BG", typeof(Texture2D));
+
     }
 
     public void OnDestroy()
@@ -50,8 +55,8 @@ public class LoginUI_Logic : MessageHandler
         for (int i = 0; i < m_nCharCount; i++)
         {
             StCharPickInfo CharInfo = m_SelCharList[i];
-            GUI.Label(new Rect(100, i * 20, 100, 20), CharInfo.dwLevel);
-            GUI.Label(new Rect(200, i * 20, 100, 20), CharInfo.dwFeature);
+            GUI.Label(new Rect(100, i * 20, 100, 20), ""+CharInfo.dwLevel);
+            GUI.Label(new Rect(200, i * 20, 100, 20), "" + CharInfo.dwFeature);
             GUI.Label(new Rect(300, i * 20, 100, 20), "男");
 
             if (GUI.Button(new Rect(0, i * 20, 100, 20), CharInfo.szCharName))
@@ -67,6 +72,8 @@ public class LoginUI_Logic : MessageHandler
     
     void ShowLoginUI()
     {
+        GUI.DrawTexture(new Rect((Screen.width - BgImage.width) / 2, (Screen.height - BgImage.height) / 2, BgImage.width, BgImage.height), BgImage, ScaleMode.ScaleAndCrop);
+
         if (GUI.Button(new Rect(Screen.width / 2 - 100, Screen.height / 2 + 30, 200, 30), "登陆"))
         {
             Debug.Log("stringAccount:" + m_stringAccount);
